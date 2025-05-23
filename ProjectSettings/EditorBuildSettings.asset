@@ -16,6 +16,8 @@ EditorBuildSettings:
       Assets_Demo Scene.unity
     guid: 7e6d3f4e5d896154ab4438845532ac3e
   m_configObjects:
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 627f531e25a046c4ea984511fc52ddf9,
+      type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: cfc29fe0436d24565af35a07ca956fd5,
       type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 1cc74647407074c94a8bfdce40e0cb2f,
