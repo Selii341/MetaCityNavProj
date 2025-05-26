@@ -69,13 +69,13 @@ public class TaskManager : MonoBehaviour
     {
         // 初始只显示 Intro
         introCanvas.SetActive(true);
-        hudCanvas.SetActive(true);
+        hudCanvas.SetActive(false);
 
         // HUD 元素先都隐藏
         //arrowImage.enabled = false;
         //arrowImage.enabled = false;
-        miniMapImage.enabled = true;
-        worldArrow.enabled = true;
+        miniMapImage.enabled = false;
+        worldArrow.enabled = false;
         navBeep.enabled = false;
         timerText.text = "";
 
@@ -216,14 +216,14 @@ public class TaskManager : MonoBehaviour
 
         // 3D world arrow 
         // WORLD-SPACE ARROW: show from Task 3 onward
-        //worldArrow.enabled = (taskNum == 2 || taskNum == 5);
+        worldArrow.enabled = (taskNum == 2 || taskNum == 5);
 
 
         // 小地图：从 3 号任务开始可见
-        //miniMapImage.enabled = (taskNum == 3 || taskNum == 5);
+        miniMapImage.enabled = (taskNum == 3 || taskNum == 5);
 
         // 声音：从 5 号任务开始可用
-        navBeep.enabled = (taskNum >= 4);
+        navBeep.enabled = (taskNum == 4 || taskNum == 5);
     }
 
     public Transform GetCurrentTarget()
