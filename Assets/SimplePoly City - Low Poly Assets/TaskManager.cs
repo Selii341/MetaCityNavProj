@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.AI;
 using UnityEngine.XR;
 using System.Collections.Generic;
+using System.Collections;
 
 public class TaskManager : MonoBehaviour
 {
@@ -11,6 +12,7 @@ public class TaskManager : MonoBehaviour
 
     [Header("UI Canvases")]
     public GameObject introCanvas;
+    public GameObject endCanvas;
     public GameObject hudCanvas;
 
     [Header("HUD Elements")]
@@ -42,7 +44,7 @@ public class TaskManager : MonoBehaviour
 
     [Header("3D Arrow (Task 4)")]
     public Image worldArrow;
-
+    public bool MiniMapVisible => miniMapImage.enabled;
     /// <summary>
     /// Show only the cube matching currentIndex, hide the rest
     /// </summary>
@@ -69,6 +71,7 @@ public class TaskManager : MonoBehaviour
     {
         // 初始只显示 Intro
         introCanvas.SetActive(true);
+        endCanvas.SetActive(false);
         hudCanvas.SetActive(false);
 
         // HUD 元素先都隐藏
@@ -91,44 +94,34 @@ public class TaskManager : MonoBehaviour
         //        StartTasks();
         //    return;
         //}
-        if (!running && CheckStartButton())
+        // --- 1) If we're not currently running ---
+        if (!running)
         {
-            StartTasks();
-
+            // Only allow starting when intro canvas is visible:
+            if (introCanvas.activeSelf && CheckStartButton())
+            {
+                StartTasks();
+            }
+            // In any case, bail out so we don't tick timers or re-trigger StartTasks
+            return;
         }
-        // 1）更新当前关卡的计时
-        float now = Time.time;
-        float currentElapsed = now - lastTaskStartTime;
 
-        // 2）计算总用时
-        float overallElapsed = now - initialStartTime;
+        // --- 2) While running: update UI + check arrival ---
+        UpdateTimerUI();
+        UpdateNavigationArrow();
 
-        // 3）拼接已完成关卡的用时
-        string line = $"Current ({currentIndex + 1}): {currentElapsed:F1}s\n";
-        for (int i = 0; i < currentIndex; i++)
-            line += $"Task{i + 1}: {taskTimes[i]:F1}s\n";
-        line += $"Overall: {overallElapsed:F1}s";
-
-        timerText.text = line;
-
-        // 导航箭头
-        Vector3 dir = (taskPoints[currentIndex].position - player.position).normalized;
-        float ang = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
-        //arrowRect.rotation = Quaternion.Euler(0, 0, -ang);
-
-        // 到达检测
+        // If we've reached the current target, go to next
         if (Vector3.Distance(player.position, taskPoints[currentIndex].position) < arriveDistance)
             NextTask();
 
     }
+   
     bool CheckStartButton()
     {
-        // look for the primary button on any right-hand controller
         var devices = new List<InputDevice>();
         InputDevices.GetDevicesWithCharacteristics(
             InputDeviceCharacteristics.Left | InputDeviceCharacteristics.Controller,
             devices);
-
         foreach (var d in devices)
         {
             if (d.TryGetFeatureValue(CommonUsages.primaryButton, out bool pressed) && pressed)
@@ -144,60 +137,137 @@ public class TaskManager : MonoBehaviour
         hudCanvas.SetActive(true);
         running = true;
 
+        running = true;
+        currentIndex = 0;
         initialStartTime = Time.time;
         lastTaskStartTime = Time.time;
-        currentIndex = 0;
+
         UpdateTaskUI();
         UpdateAids();
-        UpdateCubeMarkers();            // <— show cube 0 only
+        UpdateCubeMarkers();
+        NavAgent.Instance.SetDestination(taskPoints[0].position);         // <— show cube 0 only
 
-        // 第一次为 Task1 自动寻路目标
-        NavAgent.Instance.SetDestination(taskPoints[currentIndex].position);
+        //// 第一次为 Task1 自动寻路目标
+        //NavAgent.Instance.SetDestination(taskPoints[currentIndex].position);
 
     }
 
     public void NextTask()
     {
-        Debug.Log($"NextTask called! OldIndex={currentIndex}");
-
+        // Stop ticking and record time immediately
+        running = false;
         float now = Time.time;
-        // 1）记录刚刚完成的关卡用时
         taskTimes[currentIndex] = now - lastTaskStartTime;
 
-        // 2）切到下一关
+        // Advance index BEFORE showing popup
         currentIndex++;
-        lastTaskStartTime = now;
 
-        if (currentIndex >= taskPoints.Length)
+        // Show popup coroutine
+        StartCoroutine(ShowFinishNotification(currentIndex));
+
+        Debug.Log($"NextTask called! OldIndex={currentIndex}");
+
+
+
+        StartCoroutine(ShowFinishNotification(currentIndex));
+
+        //if (currentIndex >= taskPoints.Length)
+        //{
+        //    // 所有关卡完成，显示最终统计
+        //    running = false;
+        //    taskText.text = "Well Done！";
+        //    UpdateAids();   // 关闭所有辅助
+
+        //    // 立刻把最后一次的 elapsed 刷到 UI
+        //    float overall = now - initialStartTime;
+        //    string summary = "";
+        //    for (int i = 0; i < taskTimes.Length; i++)
+        //        summary += $"Task{i + 1}: {taskTimes[i]:F1}s\n";
+        //    summary += $"Overall: {overall:F1}s";
+        //    timerText.text = summary;
+        //    return;
+        //}
+
+        //UpdateTaskUI();
+        //UpdateAids();
+        //UpdateCubeMarkers();
+        ////切换寻路目标到下一个 TaskPoint
+        //NavAgent.Instance.SetDestination(taskPoints[currentIndex].position);
+        //// Recalculate path & redraw the line
+        //Vector3 targetPos = TaskManager.Instance.GetCurrentTarget().position;
+        //NavAgent.Instance.SetDestination(targetPos);
+        ////NavAgent.Instance.SetDestination(GetCurrentTarget().position);
+
+
+    }
+    IEnumerator ShowFinishNotification(int finishedTaskNumber)
+    {
+        endCanvas.SetActive(true);
+        var txt = endCanvas.GetComponentInChildren<Text>();
+        txt.text = $"Task {finishedTaskNumber} Complete!";
+
+        // wait for left‐hand primary button
+        bool pressed = false;
+        while (!pressed)
         {
-            // 所有关卡完成，显示最终统计
-            running = false;
-            taskText.text = "Well Done！";
-            UpdateAids();   // 关闭所有辅助
+            var devices = new List<InputDevice>();
+            InputDevices.GetDevicesWithCharacteristics(
+                InputDeviceCharacteristics.Left | InputDeviceCharacteristics.Controller,
+                devices);
 
-            // 立刻把最后一次的 elapsed 刷到 UI
-            float overall = now - initialStartTime;
-            string summary = "";
-            for (int i = 0; i < taskTimes.Length; i++)
-                summary += $"Task{i + 1}: {taskTimes[i]:F1}s\n";
-            summary += $"Overall: {overall:F1}s";
-            timerText.text = summary;
-            return;
+            foreach (var d in devices)
+            {
+                if (d.TryGetFeatureValue(CommonUsages.primaryButton, out pressed) && pressed)
+                    break;
+            }
+            yield return null;
         }
 
-        UpdateTaskUI();
-        UpdateAids();
-        UpdateCubeMarkers();
-        //切换寻路目标到下一个 TaskPoint
-        NavAgent.Instance.SetDestination(taskPoints[currentIndex].position);
-        // Recalculate path & redraw the line
-        Vector3 targetPos = TaskManager.Instance.GetCurrentTarget().position;
-        NavAgent.Instance.SetDestination(targetPos);
-        //NavAgent.Instance.SetDestination(GetCurrentTarget().position);
+        endCanvas.SetActive(false);
 
+        // If there’s more tasks, resume; else show final summary
+        if (currentIndex < taskPoints.Length)
+        {
+            running = true;
+            hudCanvas.SetActive(true);
 
+            lastTaskStartTime = Time.time;
+            UpdateTaskUI();
+            UpdateAids();
+            UpdateCubeMarkers();
+            NavAgent.Instance.SetDestination(taskPoints[currentIndex].position);
+        }
+        else
+        {
+            // all done: show final times
+            taskText.text = "Well Done!\nAll Tasks Complete";
+            float overall = Time.time - initialStartTime;
+            string summary = "";
+            for (int i = 0; i < taskTimes.Length; i++)
+                summary += $"Task {i + 1}: {taskTimes[i]:F1}s\n";
+            summary += $"Overall: {overall:F1}s";
+            timerText.text = summary;
+        }
+    }
+    void UpdateTimerUI()
+    {
+        float now = Time.time;
+        float currentElapsed = now - lastTaskStartTime;
+        float overallElapsed = now - initialStartTime;
 
+        string line = $"Current ({currentIndex + 1}): {currentElapsed:F1}s\n";
+        for (int i = 0; i < currentIndex; i++)
+            line += $"Task {i + 1}: {taskTimes[i]:F1}s\n";
+        line += $"Overall: {overallElapsed:F1}s";
 
+        timerText.text = line;
+    }
+
+    void UpdateNavigationArrow()
+    {
+        Vector3 dir = (taskPoints[currentIndex].position - player.position).normalized;
+        float ang = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+        // apply to your arrow RectTransform here if needed
     }
     void UpdateTaskUI()
     {
@@ -216,11 +286,11 @@ public class TaskManager : MonoBehaviour
 
         // 3D world arrow 
         // WORLD-SPACE ARROW: show from Task 3 onward
-        worldArrow.enabled = (taskNum == 2 || taskNum == 5);
+        worldArrow.enabled =true;
 
 
         // 小地图：从 3 号任务开始可见
-        miniMapImage.enabled = (taskNum == 3 || taskNum == 5);
+        miniMapImage.enabled = (taskNum == 1|| taskNum == 5);
 
         // 声音：从 5 号任务开始可用
         navBeep.enabled = (taskNum == 4 || taskNum == 5);
