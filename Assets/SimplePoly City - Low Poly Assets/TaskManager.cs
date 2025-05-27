@@ -290,7 +290,7 @@ public class TaskManager : MonoBehaviour
 
 
         // 小地图：从 3 号任务开始可见
-        miniMapImage.enabled = (taskNum == 1|| taskNum == 5);
+        miniMapImage.enabled = (taskNum == 3|| taskNum == 5);
 
         // 声音：从 5 号任务开始可用
         navBeep.enabled = (taskNum == 4 || taskNum == 5);

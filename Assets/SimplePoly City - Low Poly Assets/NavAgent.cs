@@ -19,8 +19,8 @@ public class NavAgent : MonoBehaviour
     {
         //Remove Agent movement, keep it only for pathfinding
 
-        //agent.updatePosition = false;
-        //agent.updateRotation = false;
+        agent.updatePosition = false;
+        agent.updateRotation = false;
 
         if (Instance == null) Instance = this;
         else DestroyImmediate(gameObject);
@@ -76,12 +76,12 @@ public class NavAgent : MonoBehaviour
             line.enabled = true;
             line.gameObject.layer = LayerMask.NameToLayer("UI");
         }
-        else if (idx == 2)
+        else if (idx == 2s)
         {
             line.enabled = true;
             line.gameObject.layer = LayerMask.NameToLayer("Player");
         }
-        else if (idx == 1)
+        else if (idx == 3)
         {
             line.enabled = true;
             line.gameObject.layer = LayerMask.NameToLayer("Minimap");
@@ -96,6 +96,6 @@ public class NavAgent : MonoBehaviour
         // 如果玩家走动了，可以实时更新线路（可选）
         if (agent.hasPath)
             UpdatePathLine(path.corners[path.corners.Length - 1]);
-        //agent.nextPosition = transform.position;
+        agent.nextPosition = transform.position;
     }
 }
