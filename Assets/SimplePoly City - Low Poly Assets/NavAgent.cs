@@ -76,7 +76,7 @@ public class NavAgent : MonoBehaviour
             line.enabled = true;
             line.gameObject.layer = LayerMask.NameToLayer("UI");
         }
-        else if (idx == 2s)
+        else if (idx == 4)
         {
             line.enabled = true;
             line.gameObject.layer = LayerMask.NameToLayer("Player");

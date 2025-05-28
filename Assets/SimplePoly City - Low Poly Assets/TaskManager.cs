@@ -45,6 +45,7 @@ public class TaskManager : MonoBehaviour
     [Header("3D Arrow (Task 4)")]
     public Image worldArrow;
     public bool MiniMapVisible => miniMapImage.enabled;
+    private float totalActiveTime = 0f;
     /// <summary>
     /// Show only the cube matching currentIndex, hide the rest
     /// </summary>
@@ -137,7 +138,6 @@ public class TaskManager : MonoBehaviour
         hudCanvas.SetActive(true);
         running = true;
 
-        running = true;
         currentIndex = 0;
         initialStartTime = Time.time;
         lastTaskStartTime = Time.time;
@@ -158,6 +158,7 @@ public class TaskManager : MonoBehaviour
         running = false;
         float now = Time.time;
         taskTimes[currentIndex] = now - lastTaskStartTime;
+        totalActiveTime += taskTimes[currentIndex];
 
         // Advance index BEFORE showing popup
         currentIndex++;
@@ -245,7 +246,8 @@ public class TaskManager : MonoBehaviour
             string summary = "";
             for (int i = 0; i < taskTimes.Length; i++)
                 summary += $"Task {i + 1}: {taskTimes[i]:F1}s\n";
-            summary += $"Overall: {overall:F1}s";
+            summary += $"Overall Active: {totalActiveTime:F1}s";
+
             timerText.text = summary;
         }
     }
@@ -286,16 +288,25 @@ public class TaskManager : MonoBehaviour
 
         // 3D world arrow 
         // WORLD-SPACE ARROW: show from Task 3 onward
-        worldArrow.enabled =true;
+        worldArrow.enabled = (taskNum >= 2);
 
 
         // 小地图：从 3 号任务开始可见
         miniMapImage.enabled = (taskNum == 3|| taskNum == 5);
 
         // 声音：从 5 号任务开始可用
-        navBeep.enabled = (taskNum == 4 || taskNum == 5);
+        navBeep.enabled = (taskNum == 1 || taskNum == 5);
     }
-
+    //1.arrow only/+minimap/+blueline/+audio/+combo
+    //2.arrow only/+blueline/+minimap/+audio/+combo
+    //4.arrow only/+minimap/+audio/+blueline/+combo
+    //3.arrowonly/+blueline/+audio/minimap/+combo
+    //5.arrow only/+audio/+blueline/+minimap/+combo
+    //6.arrow only/+audio/+minimap/+blueline/+combo
+    //7.audio only/+arrow/+minimap/+blueline/+combo
+    //8.audio only/+arrow/+blueline/+minimap/+combo
+    //9.blueline only/+arrow/+audio/+minimap/+combo
+    //10.minimap only/+arrow/+audio/+blueline/+combo
     public Transform GetCurrentTarget()
     {
         return taskPoints[currentIndex];
